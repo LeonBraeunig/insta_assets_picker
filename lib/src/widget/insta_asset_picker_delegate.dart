@@ -387,16 +387,11 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
                       unSelectAll,
                     ),
                   )
-                : Container(
-              color: Colors.white,
-                  width: 100,
-                  height: 100,
-                  child: InstaPickerCircleIconButton.unselectAll(
-                      onTap: unSelectAll,
-                      theme: theme,
-                      size: height,
-                    ),
-                ),
+                : InstaPickerCircleIconButton.unselectAll(
+                    onTap: unSelectAll,
+                    theme: theme,
+                    size: height,
+                  ),
           ],
         ),
       ),
