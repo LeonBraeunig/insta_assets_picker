@@ -11,11 +11,14 @@ import 'package:provider/provider.dart';
 
 import 'package:wechat_picker_library/wechat_picker_library.dart';
 
-/// Die reduzierte Höhe der Crop-View bleibt konstant
+/// The reduced height of the crop view
 const _kReducedCropViewHeight = kToolbarHeight;
 
-/// Die Position der Crop-View bleibt konstant, wenn erweitert
+/// The position of the crop view when extended
 const _kExtendedCropViewPosition = 0.0;
+
+/// Scroll offset multiplier to start viewer position animation
+const _kScrollMultiplier = 1.5;
 
 const _kIndicatorSize = 20.0;
 const _kPathSelectorRowHeight = 50.0;
@@ -60,43 +63,43 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
           shouldRevertGrid: false,
         );
 
-  /// Der Texttitel in der Picker [AppBar].
+  /// The text title in the picker [AppBar].
   final String? title;
 
-  /// Callback, der aufgerufen wird, wenn die Asset-Auswahl bestätigt wird.
-  /// Es wird ein [Stream] mit Exportdetails [InstaAssetsExportDetails] als Argument übergeben.
+  /// Callback called when the assets selection is confirmed.
+  /// It will as argument a [Stream] with exportation details [InstaAssetsExportDetails].
   final Function(Stream<InstaAssetsExportDetails>) onCompleted;
 
-  /// Das [Widget], das oben in der Assets-Grid-Ansicht angezeigt wird.
-  /// Standard ist der Button zum Abwählen aller Assets.
+  /// The [Widget] to display on top of the assets grid view.
+  /// Default is unselect all assets button.
   final InstaPickerActionsBuilder? actionsBuilder;
 
-  /// Sollte der Picker geschlossen werden, wenn die Auswahl bestätigt wird
+  /// Should the picker be closed when the selection is confirmed
   ///
-  /// Standardmäßig `false`, ähnlich wie bei Instagram
+  /// Defaults to `false`, like instagram
   final bool closeOnComplete;
 
-  /// Sollte der Picker automatisch zuschneiden, wenn die Auswahl bestätigt wird
+  /// Should the picker automatically crop when the selection is confirmed
   ///
-  /// Standardmäßig `false`.
+  /// Defaults to `false`.
   final bool skipCropOnComplete;
 
-  // LOKALE PARAMETER
+  // LOCAL PARAMETERS
 
-  /// Letzte Position des Grid-View-Scroll-Controllers speichern
+  /// Save last position of the grid view scroll controller
   double _lastScrollOffset = 0.0;
   double _lastEndScrollOffset = 0.0;
 
-  /// Scroll-Offset-Position zum Springen nach der Erweiterung der Crop-View
+  /// Scroll offset position to jump to after crop view is expanded
   double? _scrollTargetOffset;
 
   final ValueNotifier<double> _cropViewPosition = ValueNotifier<double>(0);
   final _cropViewerKey = GlobalKey<CropViewerState>();
 
-  /// Controller, der den Zustand der Asset-Crop-Werte und der Exportation verwaltet
+  /// Controller handling the state of asset crop values and the exportation
   final InstaAssetsCropController _cropController;
 
-  /// Ob der Picker gemountet ist. Auf `false` setzen, wenn disposed.
+  /// Whether the picker is mounted. Set to `false` if disposed.
   bool _mounted = true;
 
   @override
@@ -109,7 +112,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     super.dispose();
   }
 
-  /// Wird aufgerufen, wenn die Bestätigungs-[TextButton] angetippt wird
+  /// Called when the confirmation [TextButton] is tapped
   void onConfirm(BuildContext context) {
     if (closeOnComplete) {
       Navigator.of(context).pop(provider.selectedAssets);
@@ -123,13 +126,14 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     );
   }
 
-  /// Die responsive Höhe der Crop-View bleibt konstant
+  /// The responsive height of the crop view
+  /// setup to not be bigger than half the screen height
   double cropViewHeight(BuildContext context) => math.min(
         MediaQuery.of(context).size.width,
         MediaQuery.of(context).size.height * 0.5,
       );
 
-  /// Gibt die Thumbnail-Position im Scroll-View zurück
+  /// Returns thumbnail [index] position in scroll view
   double indexPosition(BuildContext context, int index) {
     final row = (index / gridCount).floor();
     final size =
@@ -138,20 +142,20 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     return row * size + (row * itemSpacing);
   }
 
-  /// Crop-View immer erweitert halten (keine Animation)
+  /// Expand the crop view size to the maximum
   void _expandCropView([double? lockOffset]) {
     _scrollTargetOffset = lockOffset;
     _cropViewPosition.value = _kExtendedCropViewPosition;
   }
 
-  /// Alle ausgewählten Assets abwählen
+  /// Unselect all the selected assets
   void unSelectAll() {
     provider.selectedAssets = [];
     _cropController.clear();
   }
 
-  /// Initialisiere [previewAsset] mit [p.selectedAssets], falls nicht leer,
-  /// sonst das erste Element des Albums
+  /// Initialize [previewAsset] with [p.selectedAssets] if not empty
+  /// otherwise if the first item of the album
   Future<void> _initializePreviewAsset(
     DefaultAssetPickerProvider p,
     bool shouldDisplayAssets,
@@ -166,8 +170,8 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
       });
     }
 
-    // Wenn Asset-Liste verfügbar und kein Asset ausgewählt ist,
-    // zeige das erste Element der Liste
+    // when asset list is available and no asset is selected,
+    // preview the first of the list
     if (shouldDisplayAssets && p.selectedAssets.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final list =
@@ -179,7 +183,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     }
   }
 
-  /// Wird aufgerufen, wenn das Asset-Thumbnail angetippt wird
+  /// Called when the asset thumbnail is tapped
   @override
   Future<void> viewAsset(
     BuildContext context,
@@ -192,7 +196,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     if (_cropController.isCropViewReady.value != true) {
       return;
     }
-    // Wenn es das Preview-Asset ist, wähle es ab
+    // if is preview asset, unselect it
     if (provider.selectedAssets.isNotEmpty &&
         _cropController.previewAsset.value == currentAsset) {
       selectAsset(context, currentAsset, index, true);
@@ -206,7 +210,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     selectAsset(context, currentAsset, index, false);
   }
 
-  /// Wird aufgerufen, wenn ein Asset ausgewählt wird
+  /// Called when an asset is selected
   @override
   Future<void> selectAsset(
     BuildContext context,
@@ -222,7 +226,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     final prevCount = provider.selectedAssets.length;
     await super.selectAsset(context, asset, index, selected);
 
-    // Aktualisiere das Preview-Asset mit dem ausgewählten Asset
+    // update preview asset with selected
     final selectedAssets = provider.selectedAssets;
     if (prevCount < selectedAssets.length) {
       _cropController.previewAsset.value = asset;
@@ -236,8 +240,6 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
   }
 
   /// Handle scroll on grid view to hide/expand the crop view
-  /// **Diese Methode wird entfernt, um die Animation zu deaktivieren**
-  /*
   bool _handleScroll(
     BuildContext context,
     ScrollNotification notification,
@@ -285,9 +287,8 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
 
     return true;
   }
-  */
 
-  /// Gibt einen Loader-[Widget] zurück, der in der Crop-View und statt des Bestätigungsbuttons angezeigt wird
+  /// Returns a loader [Widget] to show in crop view and instead of confirm button
   Widget _buildLoader(BuildContext context, double radius) {
     if (super.loadingIndicatorBuilder != null) {
       return super.loadingIndicatorBuilder!(context, provider.isAssetsEmpty);
@@ -299,7 +300,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     );
   }
 
-  /// Gibt den [TextButton] zurück, der die Albumliste öffnet
+  /// Returns the [TextButton] that open album list
   @override
   Widget pathEntitySelector(BuildContext context) {
     Widget selector(BuildContext context) {
@@ -359,7 +360,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     );
   }
 
-  /// Gibt die Liste der Aktionen zurück, die oben in der Assets-Grid-Ansicht angezeigt werden
+  /// Returns the list ofactions that are displayed on top of the assets grid view
   Widget _buildActions(BuildContext context) {
     final double height = _kPathSelectorRowHeight - _kActionsPadding.vertical;
     final ThemeData? theme = pickerTheme?.copyWith(
@@ -370,7 +371,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
       height: _kPathSelectorRowHeight,
       width: MediaQuery.of(context).size.width,
       child: Padding(
-        // Verringere das linke Padding, weil der Pfad-Selector-Button ein Padding hat
+        // decrease left padding because the path selector button has a padding
         padding: _kActionsPadding.copyWith(left: _kActionsPadding.left - 4),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -397,8 +398,8 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     );
   }
 
-  /// Gibt den oberen rechten Bestätigungs-[TextButton] zurück
-  /// Ruft [onConfirm] auf
+  /// Returns the top right selection confirmation [TextButton]
+  /// Calls [onConfirm]
   @override
   Widget confirmButton(BuildContext context) {
     final Widget button = ValueListenableBuilder<bool>(
@@ -432,10 +433,10 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     );
   }
 
-  /// Gibt die meisten Widgets des Layouts zurück, die App Bar, die Crop-View und die Grid-View
+  /// Returns most of the widgets of the layout, the app bar, the crop view and the grid view
   @override
   Widget androidLayout(BuildContext context) {
-    // Höhe der AppBar + CropView + Pfad-Selector-Zeile
+    // height of appbar + cropview + path selector row
     final topWidgetHeight = cropViewHeight(context) +
         kToolbarHeight +
         _kPathSelectorRowHeight +
@@ -446,23 +447,31 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
       builder: (context, _) => ValueListenableBuilder<double>(
           valueListenable: _cropViewPosition,
           builder: (context, position, child) {
-            // Die obere Position, wenn die Crop-View reduziert ist
+            // the top position when the crop view is reduced
             final topReducedPosition = -(cropViewHeight(context) -
                 _kReducedCropViewHeight +
                 kToolbarHeight);
-            // Position auf eine konstante erweiterte Position setzen
-            position = _kExtendedCropViewPosition;
-            // Höhe der Crop-View bleibt konstant
-            final cropViewVisibleHeight = _kReducedCropViewHeight;
-            // Opazität basierend auf einer konstanten Position festlegen
-            final opacity = 1.0;
-
-            final animationDuration = Duration.zero; // Keine Animation
+            position =
+                position.clamp(topReducedPosition, _kExtendedCropViewPosition);
+            // the height of the crop view visible on screen
+            final cropViewVisibleHeight = (topWidgetHeight +
+                    position -
+                    MediaQuery.of(context).padding.top -
+                    kToolbarHeight -
+                    _kPathSelectorRowHeight)
+                .clamp(_kReducedCropViewHeight, topWidgetHeight);
+            // opacity is calculated based on the position of the crop view
+            final opacity =
+                ((position / -topReducedPosition) + 1).clamp(0.4, 1.0);
+            final animationDuration = position == topReducedPosition ||
+                    position == _kExtendedCropViewPosition
+                ? const Duration(milliseconds: 250)
+                : Duration.zero;
 
             double gridHeight = MediaQuery.of(context).size.height -
                 kToolbarHeight -
                 _kReducedCropViewHeight;
-            // Wenn keine Assets angezeigt werden, die genaue Höhe berechnen, um den Loader anzuzeigen
+            // when not assets are displayed, compute the exact height to show the loader
             if (!provider.hasAssetsToDisplay) {
               gridHeight -= cropViewHeight(context) - -_cropViewPosition.value;
             }
@@ -475,23 +484,26 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
 
             return Stack(
               children: [
-                Padding(
+                AnimatedPadding(
                   padding: EdgeInsets.only(top: topPadding),
+                  duration: animationDuration,
                   child: SizedBox(
                     height: gridHeight,
                     width: MediaQuery.of(context).size.width,
                     child: NotificationListener<ScrollNotification>(
-                      onNotification: (notification) {
-                        // Scroll-Handling deaktivieren, da wir die Animation entfernen
-                        // _handleScroll(context, notification, position, topReducedPosition);
-                        return false;
-                      },
+                      onNotification: (notification) => _handleScroll(
+                        context,
+                        notification,
+                        position,
+                        topReducedPosition,
+                      ),
                       child: _buildGrid(context),
                     ),
                   ),
                 ),
-                Positioned(
+                AnimatedPositioned(
                   top: position,
+                  duration: animationDuration,
                   child: SizedBox(
                     width: MediaQuery.of(context).size.width,
                     height: topWidgetHeight,
@@ -516,7 +528,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
                             Listener(
                               onPointerDown: (_) {
                                 _expandCropView();
-                                // Scroll-Event stoppen
+                                // stop scroll event
                                 if (gridScrollController.hasClients) {
                                   gridScrollController
                                       .jumpTo(gridScrollController.offset);
@@ -528,9 +540,8 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
                                 textDelegate: textDelegate,
                                 provider: provider,
                                 opacity: opacity,
-                                height: _kReducedCropViewHeight,
-                                // Feste Höhe
-                                // Center the loader in the visible viewport of the crop view
+                                height: cropViewHeight(context),
+                                // center the loader in the visible viewport of the crop view
                                 loaderWidget: Align(
                                   alignment: Alignment.bottomCenter,
                                   child: SizedBox(
@@ -558,17 +569,17 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     );
   }
 
-  /// Da das Layout auf allen Plattformen gleich ist, wird einfach [androidLayout] aufgerufen
+  /// Since the layout is the same on all platform, it simply call [androidLayout]
   @override
   Widget appleOSLayout(BuildContext context) => androidLayout(context);
 
-  /// Gibt die [ListView] zurück, die die Alben enthält
+  /// Returns the [ListView] containing the albums
   Widget _buildListAlbums(context) {
     return Consumer<DefaultAssetPickerProvider>(
         builder: (BuildContext context, provider, __) {
       if (isAppleOS(context)) return pathEntityListWidget(context);
 
-      // ANMERKUNG: Position auf Android fixieren, ziemlich hacky und könnte optimiert werden
+      // NOTE: fix position on android, quite hacky could be optimized
       return ValueListenableBuilder<bool>(
         valueListenable: isSwitchingPath,
         builder: (_, bool isSwitchingPath, Widget? child) =>
@@ -584,7 +595,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     });
   }
 
-  /// Gibt die [GridView] zurück, die die Assets anzeigt
+  /// Returns the [GridView] displaying the assets
   Widget _buildGrid(BuildContext context) {
     return Consumer<DefaultAssetPickerProvider>(
       builder: (BuildContext context, DefaultAssetPickerProvider p, __) {
@@ -596,7 +607,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
           duration: const Duration(milliseconds: 300),
           child: shouldDisplayAssets
               ? MediaQuery(
-                  // Fix: https://github.com/fluttercandies/flutter_wechat_assets_picker/issues/395
+                  // fix: https://github.com/fluttercandies/flutter_wechat_assets_picker/issues/395
                   data: MediaQuery.of(context).copyWith(
                     padding: const EdgeInsets.only(top: -kToolbarHeight),
                   ),
@@ -608,7 +619,7 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     );
   }
 
-  /// Um ausgewählte Assets-Indikator und Preview-Asset-Overlay anzuzeigen
+  /// To show selected assets indicator and preview asset overlay
   @override
   Widget selectIndicator(BuildContext context, int index, AssetEntity asset) {
     final selectedAssets = provider.selectedAssets;
@@ -617,8 +628,8 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
     final int indexSelected = selectedAssets.indexOf(asset);
     final bool isSelected = indexSelected != -1;
 
-    final Widget innerSelector = Container(
-      // Entferne die Animation
+    final Widget innerSelector = AnimatedContainer(
+      duration: duration,
       width: _kIndicatorSize,
       height: _kIndicatorSize,
       padding: const EdgeInsets.all(2),
@@ -629,9 +640,15 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
             : theme.unselectedWidgetColor.withOpacity(.2),
         shape: BoxShape.circle,
       ),
-      child: isSelected
-          ? Text((indexSelected + 1).toString())
-          : const SizedBox.shrink(),
+      child: FittedBox(
+        child: AnimatedSwitcher(
+          duration: duration,
+          reverseDuration: duration,
+          child: isSelected
+              ? Text((indexSelected + 1).toString())
+              : const SizedBox.shrink(),
+        ),
+      ),
     );
 
     return ValueListenableBuilder<AssetEntity?>(
@@ -644,7 +661,8 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
             onTap: isPreviewEnabled
                 ? () => viewAsset(context, index, asset)
                 : null,
-            child: Container(
+            child: AnimatedContainer(
+              duration: switchingPathDuration,
               padding: const EdgeInsets.all(4),
               color: isPreview
                   ? theme.unselectedWidgetColor.withOpacity(.5)
@@ -671,8 +689,8 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
   Widget selectedBackdrop(BuildContext context, int index, AssetEntity asset) =>
       const SizedBox.shrink();
 
-  /// Deaktiviere den "Item Banned Indicator" im Single Mode (#26), sodass
-  /// das neu ausgewählte Asset das alte ersetzt
+  /// Disable item banned indicator in single mode (#26) so that
+  /// the new selected asset replace the old one
   @override
   Widget itemBannedIndicator(BuildContext context, AssetEntity asset) =>
       isSingleAssetMode
