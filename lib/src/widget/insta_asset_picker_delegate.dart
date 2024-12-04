@@ -529,10 +529,10 @@ class InstaAssetPickerBuilder extends DefaultAssetPickerBuilderDelegate {
                               onPointerDown: (_) {
                                 _expandCropView();
                                 // stop scroll event
-                                if (gridScrollController.hasClients) {
-                                  gridScrollController
-                                      .jumpTo(gridScrollController.offset);
-                                }
+                                // if (gridScrollController.hasClients) {
+                                //   gridScrollController
+                                //       .jumpTo(gridScrollController.offset);
+                                // }
                               },
                               child: CropViewer(
                                 key: _cropViewerKey,
