@@ -18,7 +18,7 @@ const _kReducedCropViewHeight = kToolbarHeight;
 const _kExtendedCropViewPosition = 0.0;
 
 /// Scroll offset multiplier to start viewer position animation
-const _kScrollMultiplier = 1.5;
+const _kScrollMultiplier = 0;
 
 const _kIndicatorSize = 20.0;
 const _kPathSelectorRowHeight = 50.0;
